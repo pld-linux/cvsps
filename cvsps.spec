@@ -4,8 +4,8 @@ Summary(pl):	Zestawy ³atek dla CVS
 Name:		cvsps
 Version:	2.0
 Release:	0.%{_extraver}.1
-Group:		Development/Version Control
 License:	GPL
+Group:		Development/Version Control
 Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{_extraver}.tar.gz
 # Source0-md5:	016cdaee3d33811f1d9264b5d3739647
 URL:		http://www.cobite.com/cvsps/
@@ -42,7 +42,7 @@ rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_bindir},%{_mandir}/man1}
 
 install cvsps $RPM_BUILD_ROOT%{_bindir}
-install cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1/
+install cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1
 
 %clean
 rm -rf $RPM_BUILD_ROOT
