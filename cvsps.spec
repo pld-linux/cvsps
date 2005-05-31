@@ -9,6 +9,7 @@ Group:		Development/Version Control
 Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{_extraver}.tar.gz
 # Source0-md5:	016cdaee3d33811f1d9264b5d3739647
 URL:		http://www.cobite.com/cvsps/
+BuildRequires:	zlib-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
