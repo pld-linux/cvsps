@@ -1,6 +1,6 @@
 %define		_extraver	rc1
 Summary:	Patchsets for CVS
-Summary(pl.UTF-8):   Zestawy łatek dla CVS
+Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
 Version:	2.0
 Release:	0.%{_extraver}.1
