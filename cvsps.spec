@@ -1,6 +1,6 @@
 %define		_extraver	rc1
 Summary:	Patchsets for CVS
-Summary(pl):	Zestawy ³atek dla CVS
+Summary(pl.UTF-8):   Zestawy Å‚atek dla CVS
 Name:		cvsps
 Version:	2.0
 Release:	0.%{_extraver}.1
@@ -21,14 +21,14 @@ seeing the big picture of the evolution of a cvs project. While cvs
 tracks revision information, it is often difficult to see what changes
 were committed 'atomically' to the repository.
 
-%description -l pl
-CVSps jest programem do generowania informacji o 'zestawie ³atek'
+%description -l pl.UTF-8
+CVSps jest programem do generowania informacji o 'zestawie Å‚atek'
 (ang. patchset) z repozytorium CVS. Patchset w tym przypadku jest
-zdefiniowany jako zbiór zmian dokonanych na kolekcji plików wys³anych
-w tym samym momencie (za pomoc± jednego wywo³ania 'cvs commit'). Ta
-informacja jest przydatna do ¶ledzenia procesu rozwoju projektu w CVS.
-Choæ CVS ¶ledzi informacje o rewizjach, obejrzenie zmian wys³anych
-'atomowo' do repozytorium nie jest rzecz± ³atw±.
+zdefiniowany jako zbiÃ³r zmian dokonanych na kolekcji plikÃ³w wysÅ‚anych
+w tym samym momencie (za pomocÄ… jednego wywoÅ‚ania 'cvs commit'). Ta
+informacja jest przydatna do Å›ledzenia procesu rozwoju projektu w CVS.
+ChoÄ‡ CVS Å›ledzi informacje o rewizjach, obejrzenie zmian wysÅ‚anych
+'atomowo' do repozytorium nie jest rzeczÄ… Å‚atwÄ….
 
 %prep
 %setup -q -n %{name}-%{version}%{_extraver}
