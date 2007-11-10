@@ -1,0 +1,511 @@
+diff --git a/Makefile b/Makefile
+index 507c3e9..05ca856 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,8 +1,8 @@
+ MAJOR=2
+ MINOR=1
+ CC?=gcc
+-CFLAGS?=-g -O2 -Wall 
+-CFLAGS+=-I. -DVERSION=\"$(MAJOR).$(MINOR)\"
++CFLAGS?=-g -O2 -Wall
++CPPFLAGS?=-I. -DVERSION=\"$(MAJOR).$(MINOR)\"
+ prefix?=/usr/local
+ OBJS=\
+ 	cbtcommon/debug.o\
+@@ -20,6 +20,9 @@ OBJS=\
+ 
+ all: cvsps
+ 
++deps:
++	makedepend -Y -I. *.c cbtcommon/*.c
++
+ cvsps: $(OBJS)
+ 	$(CC) -o cvsps $(OBJS) -lz
+ 
+@@ -33,3 +36,27 @@ clean:
+ 	rm -f cvsps *.o cbtcommon/*.o core
+ 
+ .PHONY: install clean
++# DO NOT DELETE
++
++cache.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
++cache.o: ./cbtcommon/debug.h cache.h cvsps_types.h cvsps.h util.h
++cap.o: ./cbtcommon/debug.h ./cbtcommon/inline.h ./cbtcommon/text_util.h cap.h
++cap.o: cvs_direct.h
++cvs_direct.o: ./cbtcommon/debug.h ./cbtcommon/inline.h
++cvs_direct.o: ./cbtcommon/text_util.h ./cbtcommon/tcpsocket.h
++cvs_direct.o: ./cbtcommon/sio.h cvs_direct.h util.h
++cvsps.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
++cvsps.o: ./cbtcommon/list.h ./cbtcommon/text_util.h ./cbtcommon/debug.h
++cvsps.o: ./cbtcommon/rcsid.h cache.h cvsps_types.h cvsps.h util.h stats.h
++cvsps.o: cap.h cvs_direct.h list_sort.h
++list_sort.o: list_sort.h ./cbtcommon/list.h
++stats.o: ./cbtcommon/hash.h ./cbtcommon/list.h ./cbtcommon/inline.h
++stats.o: cvsps_types.h cvsps.h
++util.o: ./cbtcommon/debug.h ./cbtcommon/inline.h util.h
++cbtcommon/debug.o: cbtcommon/debug.h ./cbtcommon/inline.h cbtcommon/rcsid.h
++cbtcommon/hash.o: cbtcommon/debug.h ./cbtcommon/inline.h cbtcommon/hash.h
++cbtcommon/hash.o: ./cbtcommon/list.h cbtcommon/rcsid.h
++cbtcommon/sio.o: cbtcommon/sio.h cbtcommon/rcsid.h
++cbtcommon/tcpsocket.o: cbtcommon/tcpsocket.h cbtcommon/debug.h
++cbtcommon/tcpsocket.o: ./cbtcommon/inline.h cbtcommon/rcsid.h
++cbtcommon/text_util.o: cbtcommon/text_util.h cbtcommon/rcsid.h
+diff --git a/cache.c b/cache.c
+index 4c51cf7..5f67a7c 100644
+--- a/cache.c
++++ b/cache.c
+@@ -108,10 +108,19 @@ time_t read_cache()
+     int tag_flags = 0;
+     char branchbuff[LOG_STR_MAX] = "";
+     int branch_add = 0;
+-    char logbuff[LOG_STR_MAX] = "";
++    int logbufflen = LOG_STR_MAX + 1;
++    char * logbuff = malloc(logbufflen);
+     time_t cache_date = -1;
+     int read_version;
+ 
++    if (logbuff == NULL)
++    {
++	debug(DEBUG_SYSERROR, "could not malloc %d bytes for logbuff in read_cache", logbufflen);
++	exit(1);
++    }
++
++    logbuff[0] = 0;
++
+     if (!(fp = cache_open("r")))
+ 	goto out;
+ 
+@@ -299,8 +308,19 @@ time_t read_cache()
+ 	    else
+ 	    {
+ 		/* Make sure we have enough in the buffer */
+-		if (strlen(logbuff)+strlen(buff)<LOG_STR_MAX)
+-		    strcat(logbuff, buff);
++		int len = strlen(buff);
++		if (strlen(logbuff) + len >= LOG_STR_MAX)
++		{
++		    logbufflen += (len >= LOG_STR_MAX ? (len+1) : LOG_STR_MAX);
++		    char * newlogbuff = realloc(logbuff, logbufflen);
++		    if (newlogbuff == NULL)
++		    {
++			debug(DEBUG_SYSERROR, "could not realloc %d bytes for logbuff in read_cache", logbufflen);
++			exit(1);
++		    }
++		    logbuff = newlogbuff;
++		}
++		strcat(logbuff, buff);
+ 	    }
+ 	    break;
+ 	case CACHE_NEED_PS_MEMBERS:
+@@ -332,6 +352,7 @@ time_t read_cache()
+  out_close:
+     fclose(fp);
+  out:
++    free(logbuff);
+     return cache_date;
+ }
+ 
+@@ -344,7 +365,7 @@ enum
+     CR_BRANCH_POINT
+ };
+ 
+-static void parse_cache_revision(PatchSetMember * psm, const char * p_buff)
++static void parse_cache_revision(PatchSetMember * psm, const char * buff)
+ {
+     /* The format used to generate is:
+      * "file:%s; pre_rev:%s; post_rev:%s; dead:%d; branch_point:%d\n"
+@@ -354,35 +375,37 @@ static void parse_cache_revision(PatchSetMember * psm, const char * p_buff)
+     char post[REV_STR_MAX];
+     int dead = 0;
+     int bp = 0;
+-    char buff[BUFSIZ];
+     int state = CR_FILENAME;
+-    const char *s;
+-    char * p = buff;
+-
+-    strcpy(buff, p_buff);
++    const char *sep;
++    char * p;
++    char * c;
+ 
+-    while ((s = strsep(&p, ";")))
++    for (p = buff, sep = buff;			  /* just ensure sep is non-NULL */
++	 (sep != NULL) && (c = strchr(p, ':'));
++	 p = sep + 1)
+     {
+-	char * c = strchr(s, ':');
+-
+-	if (!c)
+-	{
+-	    debug(DEBUG_APPERROR, "invalid cache revision line '%s'|'%s'", p_buff, s);
+-	    exit(1);
+-	}
++	size_t len;
++	sep = strchr(c, ';');
++	c++;
+ 
+-	*c++ = 0;
++	if (sep != NULL)
++	    len = sep - c;
++	else /* last field in the cache line */
++	    len = strlen(c);
+ 
+ 	switch(state)
+ 	{
+ 	case CR_FILENAME:
+-	    strcpy(filename, c);
++	    memcpy(filename, c, len);
++	    filename[len] = '\0';
+ 	    break;
+ 	case CR_PRE_REV:
+-	    strcpy(pre, c);
++	    memcpy(pre, c, len);
++	    pre[len] = '\0';
+ 	    break;
+ 	case CR_POST_REV:
+-	    strcpy(post, c);
++	    memcpy(post, c, len);
++	    post[len] = '\0';
+ 	    break;
+ 	case CR_DEAD:
+ 	    dead = atoi(c);
+diff --git a/cap.c b/cap.c
+index a6186f6..a1927df 100644
+--- a/cap.c
++++ b/cap.c
+@@ -121,11 +121,19 @@ int check_version_string(const char * str, int req_major, int req_minor, int req
+ 	return 0;
+     }
+ 
++    /* We might have encountered a FreeBSD system which
++     * has a mucked up version string of:
++     *  Concurrent Versions System (CVS) '1.11.17'-FreeBSD (client/server)
++     * so re-test just in case
++     */
+     p += skip;
+     if (sscanf(p, "%d.%d.%d", &major, &minor, &extra) != 3)
+     {	
+-	debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
+-	return 0;
++        if (sscanf(p, "'%d.%d.%d'", &major, &minor, &extra) != 3)
++	{
++		debug(DEBUG_APPMSG1, "WARNING: malformed CVS version: %s", str);
++		return 0;
++	}
+     }
+ 
+     return (major > req_major || 
+diff --git a/cbtcommon/tcpsocket.c b/cbtcommon/tcpsocket.c
+index 27cc13a..f31060e 100644
+--- a/cbtcommon/tcpsocket.c
++++ b/cbtcommon/tcpsocket.c
+@@ -185,20 +185,20 @@ tcp_connect(int sockfd, const char *rem_addr, unsigned short port)
+ int
+ convert_address(long *dest, const char *addr_str)
+ {
+-#ifdef LINUX
++#ifdef __linux__
+   struct in_addr ip;
+ #endif
+   int retval = 0;
+   char errstr[256];
+   
+   /* first try converting "numbers and dots" notation */
+-#ifdef LINUX
++#ifdef __linux__
+   if ( inet_aton(addr_str, &ip) )
+   {
+     memcpy(dest, &ip.s_addr, sizeof(ip.s_addr));
+   }
+ #else
+-  if ( (*dest = inet_addr(addr_str)) != -1)
++  if ( (*dest = inet_addr(addr_str)) != INADDR_NONE)
+   {
+     /* nothing */
+   }
+diff --git a/cvsps.1 b/cvsps.1
+index cea0faf..6cfdac6 100644
+--- a/cvsps.1
++++ b/cvsps.1
+@@ -83,7 +83,7 @@ some hacks which are not generally applicable.
+ disable the use of rlog internally.  Note: rlog is
+ required for stable PatchSet numbering.  Use with care.
+ .TP
+-.B \-\-diffs\-opts <option string>
++.B \-\-diff\-opts <option string>
+ send a custom set of options to diff, for example to increase
+ the number of context lines, or change the diff format.
+ .TP
+diff --git a/cvsps.c b/cvsps.c
+index 1e64e3c..981cd78 100644
+--- a/cvsps.c
++++ b/cvsps.c
+@@ -39,7 +39,8 @@ RCSID("$Id$");
+ 
+ enum
+ {
+-    NEED_FILE,
++    NEED_RCS_FILE,
++    NEED_WORKING_FILE,
+     NEED_SYMS,
+     NEED_EOS,
+     NEED_START_LOG,
+@@ -117,7 +118,9 @@ static int parse_args(int, char *[]);
+ static int parse_rc();
+ static void load_from_cvs();
+ static void init_paths();
+-static CvsFile * parse_file(const char *);
++static CvsFile * build_file_by_name(const char *);
++static CvsFile * parse_rcs_file(const char *);
++static CvsFile * parse_working_file(const char *);
+ static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
+ static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
+ static void check_print_patch_set(PatchSet *);
+@@ -260,12 +263,13 @@ static void load_from_cvs()
+ {
+     FILE * cvsfp;
+     char buff[BUFSIZ];
+-    int state = NEED_FILE;
++    int state = NEED_RCS_FILE;
+     CvsFile * file = NULL;
+     PatchSetMember * psm = NULL;
+     char datebuff[20];
+     char authbuff[AUTH_STR_MAX];
+-    char logbuff[LOG_STR_MAX + 1];
++    int logbufflen = LOG_STR_MAX + 1;
++    char * logbuff = malloc(logbufflen);
+     int loglen = 0;
+     int have_log = 0;
+     char cmd[BUFSIZ];
+@@ -273,6 +277,12 @@ static void load_from_cvs()
+     char use_rep_buff[PATH_MAX];
+     char * ltype;
+ 
++    if (logbuff == NULL)
++    {
++	debug(DEBUG_SYSERROR, "could not malloc %d bytes for logbuff in load_from_cvs", logbufflen);
++	exit(1);
++    }
++
+     if (!no_rlog && !test_log_file && cvs_check_cap(CAP_HAVE_RLOG))
+     {
+ 	ltype = "rlog";
+@@ -298,12 +308,12 @@ static void load_from_cvs()
+ 	 * which is necessary to fill in the pre_rev stuff for a 
+ 	 * PatchSetMember
+ 	 */
+-	snprintf(cmd, BUFSIZ, "cvs %s %s %s -d '%s<;%s' %s", compress_arg, norc, ltype, date_str, date_str, use_rep_buff);
++	snprintf(cmd, BUFSIZ, "cvs %s %s -q %s -d '%s<;%s' %s", compress_arg, norc, ltype, date_str, date_str, use_rep_buff);
+     }
+     else
+     {
+ 	date_str[0] = 0;
+-	snprintf(cmd, BUFSIZ, "cvs %s %s %s %s", compress_arg, norc, ltype, use_rep_buff);
++	snprintf(cmd, BUFSIZ, "cvs %s %s -q %s %s", compress_arg, norc, ltype, use_rep_buff);
+     }
+     
+     debug(DEBUG_STATUS, "******* USING CMD %s", cmd);
+@@ -339,10 +349,26 @@ static void load_from_cvs()
+ 
+ 	switch(state)
+ 	{
+-	case NEED_FILE:
+-	    if (strncmp(buff, "RCS file", 8) == 0 && (file = parse_file(buff)))
++	case NEED_RCS_FILE:
++	    if (strncmp(buff, "RCS file", 8) == 0) {
++              if ((file = parse_rcs_file(buff)) != NULL)
+ 		state = NEED_SYMS;
++              else
++                state = NEED_WORKING_FILE;
++            }
+ 	    break;
++	case NEED_WORKING_FILE:
++	    if (strncmp(buff, "Working file", 12) == 0) {
++              if ((file = parse_working_file(buff)))
++		state = NEED_SYMS;
++              else
++                state = NEED_RCS_FILE;
++		break;
++	    } else {
++              // Working file come just after RCS file. So reset state if it was not found
++              state = NEED_RCS_FILE;
++            }
++            break;
+ 	case NEED_SYMS:
+ 	    if (strncmp(buff, "symbolic names:", 15) == 0)
+ 		state = NEED_EOS;
+@@ -471,7 +497,7 @@ static void load_from_cvs()
+ 		have_log = 0;
+ 		psm = NULL;
+ 		file = NULL;
+-		state = NEED_FILE;
++		state = NEED_RCS_FILE;
+ 	    }
+ 	    else
+ 	    {
+@@ -480,24 +506,22 @@ static void load_from_cvs()
+ 		 */
+ 		if (have_log || !is_revision_metadata(buff))
+ 		{
+-		    /* if the log buffer is full, that's it.  
+-		     * 
+-		     * Also, read lines (fgets) always have \n in them
+-		     * which we count on.  So if truncation happens,
+-		     * be careful to put a \n on.
+-		     * 
+-		     * Buffer has LOG_STR_MAX + 1 for room for \0 if
+-		     * necessary
+-		     */
+-		    if (loglen < LOG_STR_MAX)
++		    /* If the log buffer is full, try to reallocate more. */
++		    if (loglen < logbufflen)
+ 		    {
+ 			int len = strlen(buff);
+ 			
+-			if (len >= LOG_STR_MAX - loglen)
++			if (len >= logbufflen - loglen)
+ 			{
+-			    debug(DEBUG_APPMSG1, "WARNING: maximum log length exceeded, truncating log");
+-			    len = LOG_STR_MAX - loglen;
+-			    buff[len - 1] = '\n';
++			    debug(DEBUG_STATUS, "reallocating logbufflen to %d bytes for file %s", logbufflen, file->filename);
++			    logbufflen += (len >= LOG_STR_MAX ? (len+1) : LOG_STR_MAX);
++			    char * newlogbuff = realloc(logbuff, logbufflen);
++			    if (newlogbuff == NULL)
++			    {
++				debug(DEBUG_SYSERROR, "could not realloc %d bytes for logbuff in load_from_cvs", logbufflen);
++				exit(1);
++			    }
++			    logbuff = newlogbuff;
+ 			}
+ 
+ 			debug(DEBUG_STATUS, "appending %s to log", buff);
+@@ -524,7 +548,7 @@ static void load_from_cvs()
+ 	exit(1);
+     }
+ 
+-    if (state != NEED_FILE)
++    if (state != NEED_RCS_FILE)
+     {
+ 	debug(DEBUG_APPERROR, "Error: Log file parsing error. (%d)  Use -v to debug", state);
+ 	exit(1);
+@@ -1038,8 +1062,8 @@ static void init_paths()
+      *
+      * NOTE: because of some bizarre 'feature' in cvs, when 'rlog' is used
+      * (instead of log) it gives the 'real' RCS file path, which can be different
+-     * from the 'nominal' repository path because of symlinks in the server and 
+-     * the like.  See also the 'parse_file' routine
++     * from the 'nominal' repository path because of symlinks in the server and
++     * the like.  See also the 'parse_rcs_file' routine
+      */
+     strip_path_len = snprintf(strip_path, PATH_MAX, "%s/%s/", p, repository_path);
+ 
+@@ -1052,9 +1076,8 @@ static void init_paths()
+     debug(DEBUG_STATUS, "strip_path: %s", strip_path);
+ }
+ 
+-static CvsFile * parse_file(const char * buff)
++static CvsFile * parse_rcs_file(const char * buff)
+ {
+-    CvsFile * retval;
+     char fn[PATH_MAX];
+     int len = strlen(buff + 10);
+     char * p;
+@@ -1129,6 +1152,28 @@ static CvsFile * parse_file(const char * buff)
+ 
+     debug(DEBUG_STATUS, "stripped filename %s", fn);
+ 
++    return build_file_by_name(fn);
++}
++
++static CvsFile * parse_working_file(const char * buff)
++{
++    char fn[PATH_MAX];
++    int len = strlen(buff + 14);
++
++    /* chop the "LF" */
++    len -= 1;
++    memcpy(fn, buff + 14, len);
++    fn[len] = 0;
++
++    debug(DEBUG_STATUS, "working filename %s", fn);
++
++    return build_file_by_name(fn);
++}
++
++static CvsFile * build_file_by_name(const char * fn)
++{
++    CvsFile * retval;
++
+     retval = (CvsFile*)get_hash_object(file_hash, fn);
+ 
+     if (!retval)
+@@ -2104,6 +2149,11 @@ static void parse_sym(CvsFile * file, char * sym)
+     
+     if (!get_branch_ext(rev, eot, &leaf))
+     {
++	if (strcmp(tag, "TRUNK") == 0)
++	{
++	    debug(DEBUG_STATUS, "ignoring the TRUNK branch/tag");
++	    return;
++	}
+ 	debug(DEBUG_APPERROR, "malformed revision");
+ 	exit(1);
+     }
+@@ -2384,8 +2434,31 @@ void patch_set_add_member(PatchSet * ps, PatchSetMember * psm)
+     for (next = ps->members.next; next != &ps->members; next = next->next) 
+     {
+ 	PatchSetMember * m = list_entry(next, PatchSetMember, link);
+-	if (m->file == psm->file && ps->collision_link.next == NULL) 
+-		list_add(&ps->collision_link, &collisions);
++	if (m->file == psm->file) {
++		int order = compare_rev_strings(psm->post_rev->rev, m->post_rev->rev);
++
++		/*
++		 * Same revision too? Add it to the collision list
++		 * if it isn't already.
++		 */
++		if (!order) {
++			if (ps->collision_link.next == NULL)
++				list_add(&ps->collision_link, &collisions);
++			return;
++		}
++
++		/*
++		 * If this is an older revision than the one we already have
++		 * in this patchset, just ignore it
++		 */
++		if (order < 0)
++			return;
++
++		/*
++		 * This is a newer one, remove the old one
++		 */
++		list_del(&m->link);
++	}
+     }
+ 
+     psm->ps = ps;
+@@ -2576,7 +2649,7 @@ static void determine_branch_ancestor(PatchSet * ps, PatchSet * head_ps)
+ 	 * note: rev is the pre-commit revision, not the post-commit
+ 	 */
+ 	if (!head_ps->ancestor_branch)
+-	    d1 = 0;
++	    d1 = -1;
+ 	else if (strcmp(ps->branch, rev->branch) == 0)
+ 	    continue;
+ 	else if (strcmp(head_ps->ancestor_branch, "HEAD") == 0)
+diff --git a/cvsps_types.h b/cvsps_types.h
+index b41e2a9..dba145d 100644
+--- a/cvsps_types.h
++++ b/cvsps_types.h
+@@ -8,7 +8,7 @@
+ 
+ #include <time.h>
+ 
+-#define LOG_STR_MAX 32768
++#define LOG_STR_MAX 65536
+ #define AUTH_STR_MAX 64
+ #define REV_STR_MAX 64
+ #define MIN(a, b) ((a) < (b) ? (a) : (b))
