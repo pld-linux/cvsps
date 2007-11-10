@@ -1,15 +1,15 @@
-#%define		_extraver	rc1
 Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
 Version:	2.1
-#Release:	0.%{_extraver}.1
-Release:	1
+Release:	2
 License:	GPL
 Group:		Development/Version Control
-#Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{_extraver}.tar.gz
 Source0:	http://www.cobite.com/cvsps/%{name}-%{version}.tar.gz
 # Source0-md5:	bde2110ed9f5d14de8f8cb04e9d596fe
+# Fixes made by git people, see:
+# http://ydirson.free.fr/en/software/scm/cvsps.html
+Patch0:		%{name}-fixes.patch
 URL:		http://www.cobite.com/cvsps/
 BuildRequires:	zlib-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -33,8 +33,8 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 'atomowo' do repozytorium nie jest rzeczą łatwą.
 
 %prep
-#%setup -q -n %{name}-%{version}%{_extraver}
 %setup -q
+%patch0 -p1
 
 %build
 %{__make} \
