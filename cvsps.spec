@@ -39,7 +39,7 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 %build
 %{__make} \
 	CC="%{__cc}" \
-	CFLAGS="%{rpmcflags} -I. -DVERSION=%{version}"
+	CFLAGS="%{rpmcflags}"
 
 %install
 rm -rf $RPM_BUILD_ROOT
