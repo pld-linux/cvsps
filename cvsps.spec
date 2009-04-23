@@ -2,7 +2,7 @@ Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
 Version:	2.1
-Release:	2
+Release:	3
 License:	GPL
 Group:		Development/Version Control
 Source0:	http://www.cobite.com/cvsps/%{name}-%{version}.tar.gz
