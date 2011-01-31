@@ -1,12 +1,14 @@
+%define		subver	b1
+%define		rel		1
 Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
-Version:	2.1
-Release:	5
+Version:	2.2
+Release:	0.%{subver}.%{rel}
 License:	GPL
 Group:		Development/Version Control
-Source0:	http://www.cobite.com/cvsps/%{name}-%{version}.tar.gz
-# Source0-md5:	bde2110ed9f5d14de8f8cb04e9d596fe
+Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{subver}.tar.gz
+# Source0-md5:	997580e8e283034995b9209076858c68
 # Fixes made by git people, see:
 # http://ydirson.free.fr/en/software/scm/cvsps.html
 Patch0:		%{name}-fixes.patch
@@ -33,7 +35,7 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 'atomowo' do repozytorium nie jest rzeczą łatwą.
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}%{subver}
 %patch0 -p1
 
 %build
@@ -44,9 +46,8 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 %install
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_bindir},%{_mandir}/man1}
-
-install cvsps $RPM_BUILD_ROOT%{_bindir}
-install cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1
+install -p cvsps $RPM_BUILD_ROOT%{_bindir}
+cp -a cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1
 
 %clean
 rm -rf $RPM_BUILD_ROOT

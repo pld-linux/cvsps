@@ -240,8 +240,8 @@
  .B \-A
  Show ancestor branch when a new branch is found.
  .TP
---- b/cvsps.c
-+++ b/cvsps.c	2011-01-31 08:14:42.846391432 +0200
+--- cvsps-2.2b1/cvsps.c~	2011-01-31 08:19:44.000000000 +0200
++++ cvsps-2.2b1/cvsps.c	2011-01-31 08:53:43.552797755 +0200
 @@ -39,7 +39,8 @@
  
  enum
@@ -263,7 +263,7 @@
  static CvsFileRevision * parse_revision(CvsFile * file, char * rev_str);
  static void assign_pre_revision(PatchSetMember *, CvsFileRevision * rev);
  static void check_print_patch_set(PatchSet *);
-@@ -260,12 +263,13 @@
+@@ -267,12 +267,13 @@
  {
      FILE * cvsfp;
      char buff[BUFSIZ];
@@ -271,7 +271,7 @@
 +    int state = NEED_RCS_FILE;
      CvsFile * file = NULL;
      PatchSetMember * psm = NULL;
-     char datebuff[20];
+     char datebuff[26];
      char authbuff[AUTH_STR_MAX];
 -    char logbuff[LOG_STR_MAX + 1];
 +    int logbufflen = LOG_STR_MAX + 1;
@@ -345,13 +345,14 @@
  	    }
  	    else
  	    {
-@@ -480,24 +506,22 @@
+@@ -509,25 +510,22 @@
  		 */
  		if (have_log || !is_revision_metadata(buff))
  		{
 -		    /* if the log buffer is full, that's it.  
 -		     * 
 -		     * Also, read lines (fgets) always have \n in them
+-		     * (unless truncation happens)
 -		     * which we count on.  So if truncation happens,
 -		     * be careful to put a \n on.
 -		     * 
