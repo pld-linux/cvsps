@@ -1,5 +1,5 @@
 %define		subver	b1
-%define		rel		1
+%define		rel		2
 Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
@@ -12,6 +12,7 @@ Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{subver}.tar.gz
 # Fixes made by git people, see:
 # http://ydirson.free.fr/en/software/scm/cvsps.html
 Patch0:		%{name}-fixes.patch
+Patch1:		commitid.patch
 URL:		http://www.cobite.com/cvsps/
 BuildRequires:	zlib-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -37,6 +38,7 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 %prep
 %setup -q -n %{name}-%{version}%{subver}
 %patch0 -p1
+%patch1 -p1
 
 %build
 %{__make} \
