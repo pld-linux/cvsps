@@ -1,30 +1,27 @@
-%define		subver	b1
-%define		rel		2
 Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
-Version:	2.2
-Release:	0.%{subver}.%{rel}
-License:	GPL
+Version:	3.10
+Release:	0.1
+License:	GPL v2+
 Group:		Development/Version Control
-Source0:	http://www.cobite.com/cvsps/%{name}-%{version}%{subver}.tar.gz
-# Source0-md5:	997580e8e283034995b9209076858c68
-# Fixes made by git people, see:
-# http://ydirson.free.fr/en/software/scm/cvsps.html
-Patch0:		%{name}-fixes.patch
-Patch1:		commitid.patch
-URL:		http://www.cobite.com/cvsps/
+Source0:	http://www.catb.org/~esr/cvsps/%{name}-%{version}.tar.gz
+# Source0-md5:	eafd64ba9359105d950462552750cc51
+URL:		http://www.catb.org/~esr/cvsps/
 BuildRequires:	zlib-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
-CVSps is a program for generating 'patchset' information from a CVS
-repository. A patchset in this case is defined as a set of changes
-made to a collection of files, and all committed at the same time
-(using a single 'cvs commit' command). This information is valuable to
-seeing the big picture of the evolution of a cvs project. While cvs
-tracks revision information, it is often difficult to see what changes
-were committed 'atomically' to the repository.
+CVSps is a program for collecting patchsets from a CVS repository. The
+original use case was that its reports were useful for human
+inspection by developers working on projects using CVS, but nowadays
+the --fast-export option (which emits the history as a git-style
+fast-import stream) is more interesting.
+
+This tool was written and maintained until 2.2b1 by David Manfield,
+who reported his "thanks to my employer Cobite and Robert Lippman,
+who've given me time to develop this tool". The 3.x versions with
+fast-export dumping are maintained by Eric S. Raymond.
 
 %description -l pl.UTF-8
 CVSps jest programem do generowania informacji o 'zestawie łatek'
@@ -36,26 +33,24 @@ Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
 'atomowo' do repozytorium nie jest rzeczą łatwą.
 
 %prep
-%setup -q -n %{name}-%{version}%{subver}
-%patch0 -p1
-%patch1 -p1
+%setup -q
 
 %build
-%{__make} \
-	CC="%{__cc}" \
+%{__make} cvsps cvsps.1 \
+	CC="%{__cc} -Wall" \
 	CFLAGS="%{rpmcflags}"
 
 %install
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_bindir},%{_mandir}/man1}
 install -p cvsps $RPM_BUILD_ROOT%{_bindir}
-cp -a cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1
+cp -p cvsps.1 $RPM_BUILD_ROOT%{_mandir}/man1
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc CHANGELOG README
-%attr(755,root,root) %{_bindir}/*
-%{_mandir}/man1/*
+%doc NEWS README TODO
+%attr(755,root,root) %{_bindir}/cvsps
+%{_mandir}/man1/cvsps.1*
