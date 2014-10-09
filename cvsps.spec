@@ -8,6 +8,7 @@ Group:		Development/Version Control
 Source0:	http://www.catb.org/~esr/cvsps/%{name}-%{version}.tar.gz
 # Source0-md5:	684c22c70b305030d50dc4ee050978df
 URL:		http://www.catb.org/~esr/cvsps/
+BuildRequires:	asciidoc
 BuildRequires:	zlib-devel
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -25,12 +26,15 @@ fast-export dumping are maintained by Eric S. Raymond.
 
 %description -l pl.UTF-8
 CVSps jest programem do generowania informacji o 'zestawie łatek'
-(ang. patchset) z repozytorium CVS. Patchset w tym przypadku jest
-zdefiniowany jako zbiór zmian dokonanych na kolekcji plików wysłanych
-w tym samym momencie (za pomocą jednego wywołania 'cvs commit'). Ta
-informacja jest przydatna do śledzenia procesu rozwoju projektu w CVS.
-Choć CVS śledzi informacje o rewizjach, obejrzenie zmian wysłanych
-'atomowo' do repozytorium nie jest rzeczą łatwą.
+(ang. patchset) z repozytorium CVS. Pierwotnym zastosowaniem było
+śledzenie pracy nad projektami wykorzystującymi CVS przez ludzi, ale
+obecnie bardziej interesująca jest opcja --fast-export (wypuszczająca
+historię w postaci strumienia w stylu fast-import programu git).
+
+To narzędzie zostało napisane i było rozwijane do wersji 2.2b1 przez
+Davida Manfielda (przy wsparciu pracodawcy Cobite i Roberta Lippmana).
+Wersje 3.x ze zrzutami fast-export są utrzymywane przez Erica S.
+Raymonda.
 
 %prep
 %setup -q
