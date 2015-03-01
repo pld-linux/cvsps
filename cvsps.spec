@@ -2,7 +2,7 @@ Summary:	Patchsets for CVS
 Summary(pl.UTF-8):	Zestawy łatek dla CVS
 Name:		cvsps
 Version:	3.13
-Release:	1
+Release:	2
 License:	GPL v2+
 Group:		Development/Version Control
 Source0:	http://www.catb.org/~esr/cvsps/%{name}-%{version}.tar.gz
